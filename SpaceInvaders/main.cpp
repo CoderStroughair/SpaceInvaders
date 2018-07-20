@@ -1,15 +1,16 @@
 //TODO - Change to GLFW
 
-
+#include <Windows.h>
+#include <iostream>
 #include <time.h>
 #include <common/Shader.h>
 #include <common/Defines.h>
 #include <vector>
 #include <GLM.h>
 #include "glm/ext.hpp"
-#include "Sprite.h"
-#include "Renderer.h"
-#include <common/text.h>
+#include <common/Sprite.h>
+#include <common/Renderer.h>
+#include <GLFW/glfw3.h>
 
 /*----------------------------------------------------------------------------
 						GLOBAL VARIABLES AND CONSTANTS
@@ -35,8 +36,7 @@ struct Player
 		speed(0.01f),
 		cooldownTime(1.0f)
 	{
-		sprite.loadSprite("../Textures/ship.png");
-
+		sprite.loadSprite("../Textures/brickwall.jpg");
 		//Now we need to place the player at the bottom of the screen
 		float scale = sprite.textureDimensions.y / (float)height;
 		sprite.setPosition({ 0.0f, -1.0f + scale});
@@ -49,10 +49,10 @@ struct Bullet
 	bool enabled;
 	Sprite sprite;
 	Bullet() :
-		speed(1.0f),
+		speed(1.5f),
 		enabled(false)
 	{
-		sprite.loadSprite("../Textures/bullet.png");
+		sprite.loadSprite("../Textures/brickwall.jpg");
 	}
 };
 
@@ -80,7 +80,7 @@ struct GameState
 	float enemySpeed;
 
 	GameState() :
-		enemySpeed(0.01),
+		enemySpeed(0.01f),
 		gameTime(0.0f),
 		eIndex(0),
 		bIndex(0)
@@ -127,16 +127,12 @@ GLuint simpleShaderID;
 const char* atlas_image = "../freemono.png";
 const char* atlas_meta = "../freemono.meta";
 
-float fontSize = 25.0f;
-int textID = -1;
-int triangleDistance;
-
 GameState* gameState;
 /*----------------------------------------------------------------------------
 						FUNCTION DEFINITIONS
 ----------------------------------------------------------------------------*/
 
-void endGame(float errCode)
+void endGame(int errCode)
 {
 	delete gameState;
 	exit(errCode);
@@ -166,7 +162,7 @@ void UpdateAndRenderPlayer(const float& dt)
 
 		Bullet* bullet = gameState->bullets[gameState->bIndex];
 		bullet->enabled = true;
-		bullet->sprite.setPosition(gameState->player.sprite.getPosition());
+		bullet->sprite.setPosition(gameState->player.sprite.getPosition() + glm::vec2(0.0f, 0.01f));
 
 		if (gameState->bIndex + 1 >= (int)gameState->bullets.size())
 			gameState->bIndex = 0;
@@ -236,26 +232,19 @@ void UpdateAndRenderShields(const float& dt)
 
 /*--------------------------------------------------------------------------*/
 
-
 void init()
 {
-	if (!init_text_rendering(atlas_image, atlas_meta, width, height)) 
-	{
-		fprintf(stderr, "ERROR init text rendering\n");
-		OutputDebugString("Text Rendering Failed");
-		endGame(2);
-	}
 	Shader* factory = Shader::getInstance();		//Grab the static Shader instance from memory
-	simpleShaderID = factory->CompileShader(SIMPLE_VERT, SIMPLE_FRAG);
+	std::string log;
+	if (!(simpleShaderID = factory->CompileShader(SIMPLE_VERT, SIMPLE_FRAG, log)))
+	{
+		endGame(-5);
+	}
+	std::cout << "Log:" << log << "\n" << std::endl;
 	Shader::resetInstance();						//Delete the Shader Instance once you are finished with it.
 
 	//GameState Setup
 
-}
-
-void updateScene()
-{
-	glutPostRedisplay();
 }
 
 void display()
@@ -274,7 +263,7 @@ void display()
 	glEnable(GL_BLEND);										// enable blending to allow for Alpha value usage.
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear the color and buffer bits to make a clean slate
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);					// Create a background
+	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);					// Create a background
 
 
 	gameState->gameTime += delta;
@@ -283,87 +272,50 @@ void display()
 	UpdateAndRenderBullets(delta);
 	UpdateAndRenderShields(delta);
 	UpdateAndRenderEnemies(delta);
-
-	glutSwapBuffers();
 }
-
 
 #pragma region INPUT FUNCTIONS
 
-void keypress(unsigned char key, int x, int y) 
+void pollInput(GLFWwindow* window)
 {
-	if (key == (char)27)	//Pressing Escape Ends the game
-	{
-		exit(0);
-	}
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
 
-	if (key == 'd' || key == 'D')
-	{
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		gameState->player.moving = 1;
-	}
-
-	if (key == 'a' || key == 'A')
-	{
+	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 		gameState->player.moving = -1;
-	}
-
-	if (key == ' ')
-	{
-		gameState->player.shooting = true;
-	}
-}
-
-void keypressUp(unsigned char key, int x, int y)
-{
-	if (key == 'd' || key == 'D' || key == 'a' || key == 'A')
-	{
+	else
 		gameState->player.moving = 0;
-	}
-	if (key == ' ')
-	{
+
+	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		gameState->player.shooting = true;
+	else
 		gameState->player.shooting = false;
-	}
 }
-
-void specialKeypress(int key, int x, int y) 
-{
-
-}
-
-void specialKeypressUp(int key, int x, int y) 
-{
-
-}
-
-void (mouse)(int x, int y)
-{
-
-}
-
 #pragma endregion INPUT FUNCTIONS
 
 void main(int argc, char** argv) 
 {
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-	glutInitWindowSize(width, height);
-	glutCreateWindow("GameApp");
-	glutSetCursor(GLUT_CURSOR_CROSSHAIR);
+	if (!glfwInit())
+	{
+		exit(-1);
+	}
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
+	GLFWwindow* window = glfwCreateWindow(width, height, "Space Invaders", NULL, NULL);
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		endGame(-1);
+	}
+	glfwMakeContextCurrent(window);
+	glViewport(0, 0, width, height);
 
-	// Tell glut where the display function is
-	glutWarpPointer(width / 2, height / 2);
-	glutDisplayFunc(display);
-	glutIdleFunc(updateScene);
-
-	// Input Function Initialisers//
-	glutKeyboardFunc(keypress);
-	glutPassiveMotionFunc(mouse);
-	glutSpecialFunc(specialKeypress);
-	glutSpecialUpFunc(specialKeypressUp);
-	glutKeyboardUpFunc(keypressUp);
-
-	// A call to glewInit() must be done after glut is initialized!
+	// A call to glewInit() must be done after GLFW is initialized!
 	GLenum res = glewInit();
 	// Check for any errors
 	if (res != GLEW_OK) {
@@ -373,11 +325,14 @@ void main(int argc, char** argv)
 
 	gameState = new GameState();
 	
-
-
 	init();
-	textID = add_text("hi", -0.95f, 0.9f, fontSize, 1.0f, 1.0f, 1.0f, 1.0f);
 
-	glutMainLoop();
+	while (!glfwWindowShouldClose(window))
+	{
+		pollInput(window);
+		display();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
 	endGame(0);
 }

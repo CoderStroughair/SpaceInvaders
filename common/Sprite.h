@@ -17,7 +17,8 @@ private:
 	static unsigned int VAO;
 	static void generateVAO()	//Singleton VAO
 	{
-		glDeleteVertexArrays(1, &VAO);	//clearing any previously created VAO
+		if(VAO)
+			glDeleteVertexArrays(1, &VAO);	//clearing any previously created VAO
 		unsigned int VBO = 0;
 		glGenVertexArrays(1, &VAO);
 		glBindVertexArray(VAO);

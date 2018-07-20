@@ -17,7 +17,6 @@ void Renderer::Render(const unsigned int& VAO, const unsigned int& numVertices, 
 
 	for each (ShaderUniform uniform in variables.uniforms)
 	{
-		printf("Sending Uniforms\n");
 		unsigned int location = glGetUniformLocation(shaderID, uniform.name.c_str());
 		if (location == -1)
 		{
@@ -62,5 +61,6 @@ void Renderer::Render(const unsigned int& VAO, const unsigned int& numVertices, 
 		glBindTexture(GL_TEXTURE_2D, tex);
 		glUniform1i(glGetUniformLocation(shaderID, "texture_primary"), 0);
 	}
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	printf("Rendering...\n");
+	glDrawArrays(GL_TRIANGLES, 0, numVertices);
 }

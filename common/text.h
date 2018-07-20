@@ -20,7 +20,6 @@
 
 // change or comment these out if using different OpenGL libraries
 #include <GL/glew.h>
-#include <GL/freeglut.h>
 
 struct Renderable_Text {
 	GLuint points_vbo, texcoords_vbo;

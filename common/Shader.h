@@ -3,8 +3,7 @@
 
 #include <GL/glew.h>
 #include <stdio.h>
-#include <GL/freeglut.h>
-#include <iostream>
+#include <string>
 
 /**
 Requirements:
@@ -23,17 +22,17 @@ class Shader
 {
 private:
 	Shader() {};
-	void AddShader(GLuint &ShaderProgram, const char* pShaderText, GLenum ShaderType);
-	char* readShaderSource(const char* shaderFile);
-	bool checkCompileError(GLuint shader, GLenum ShaderType);
-	bool checkLinkError(GLuint shader);
-	bool checkValidationErrors(GLuint program);
-	static void CheckStatus(GLuint obj);
+	bool AddShader(GLuint &ShaderProgram, const char* pShaderText, GLenum ShaderType, std::string& errLog);
+	char* readShaderSource(const char* shaderFile, bool& success, std::string& errLog);
+	bool checkCompileError(GLuint shader, GLenum ShaderType, std::string& errLog);
+	bool checkLinkError(GLuint shader, std::string& errLog);
+	bool checkValidationErrors(GLuint program, std::string& errLog);
+	static bool CheckStatus(GLuint obj, std::string& errLog);
 	static Shader* Shader::instance;
 
 public:
-	GLuint CompileShader(char* vertex, char* fragment);
-	GLuint CompileComputeShader(char* compute);
+	GLuint CompileShader(char* vertex, char* fragment, std::string& errLog);
+	GLuint CompileComputeShader(char* compute, std::string& errLog);
 	static Shader* getInstance()
 	{
 		if (Shader::instance == NULL)

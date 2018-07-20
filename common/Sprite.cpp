@@ -1,7 +1,5 @@
 #include "Sprite.h"
 
-//uncomment if needed
-//#define STB_IMAGE_IMPLEMENTATION
 #include <common/stb_image.h>
 #include <string>
 #include <Windows.h>

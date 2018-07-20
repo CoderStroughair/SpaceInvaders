@@ -3,8 +3,7 @@
 
 #include <GL/glew.h>
 #include <stdio.h>
-#include <GL/freeglut.h>
-
+#include <string>
 
 class Framebuffer {
 
@@ -12,7 +11,7 @@ public:
 	GLuint framebuffer, tex;
 	Framebuffer(){}
 
-	void init(int width, int height)
+	bool init(int width, int height, std::string& errLog)
 	{
 		glGenFramebuffers(1, &framebuffer);
 		glGenTextures(1, &tex);
@@ -39,38 +38,48 @@ public:
 		GLenum draw_bufs[] = { GL_COLOR_ATTACHMENT0 };
 		glDrawBuffers(1, draw_bufs);
 		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-		if (GL_FRAMEBUFFER_COMPLETE != status) {
-			fprintf(stderr, "ERROR: incomplete framebuffer\n");
-			if (GL_FRAMEBUFFER_UNDEFINED == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_UNDEFINED\n");
+		if (GL_FRAMEBUFFER_COMPLETE != status) 
+		{
+			errLog = "Error: incomplete framebuffer: ";
+			if (GL_FRAMEBUFFER_UNDEFINED == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_UNDEFINED\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n";
 			}
-			else if (GL_FRAMEBUFFER_UNSUPPORTED == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_UNSUPPORTED\n");
+			else if (GL_FRAMEBUFFER_UNSUPPORTED == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_UNSUPPORTED\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n";
 			}
-			else if (GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS == status) {
-				fprintf(stderr, "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
+			else if (GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS == status) 
+			{
+				errLog += "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n";
 			}
 			else {
-				fprintf(stderr, "unspecified error\n");
+				errLog += "unspecified error\n";
 			}
-			exit(-1);
+			return false;
 		}
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return true;
 	}
 };
 
