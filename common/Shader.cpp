@@ -37,13 +37,14 @@ bool Shader::AddShader(GLuint &shaderProgram, const char* pShaderText, GLenum sh
 	}
 	bool success;
 	const char* pShaderSource = readShaderSource(pShaderText, success, errLog);
+	printf(pShaderSource);
 	if (!success)
 	{
 		return false;
 	}
 	glShaderSource(shaderObj, 1, (const GLchar**)&pShaderSource, NULL);
 	glCompileShader(shaderObj);
-	//CheckStatus(shaderObj);
+	CheckStatus(shaderObj, errLog);
 	if (!checkCompileError(shaderObj, shaderType, errLog))
 	{
 		return false;
@@ -65,10 +66,16 @@ GLuint Shader::CompileShader(char* vertex, char* fragment, std::string& errLog)
 	if(!AddShader(shaderProgramID, fragment, GL_FRAGMENT_SHADER, errLog)){return -1;}
 
 	glLinkProgram(shaderProgramID);
-	if (!checkLinkError(shaderProgramID, errLog)){return -1;}
+	if (!checkLinkError(shaderProgramID, errLog))
+	{
+		return -1;
+	}
 
 	glValidateProgram(shaderProgramID);
-	if (checkValidationErrors(shaderProgramID, errLog)){return -1;}
+	if (!checkValidationErrors(shaderProgramID, errLog))
+	{
+		return -1;
+	}
 
 	return shaderProgramID;
 }
@@ -100,7 +107,9 @@ bool Shader::checkCompileError(GLuint shader, GLenum ShaderType, std::string& er
 	if (GL_TRUE != params) {
 		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &params);
 		glGetShaderInfoLog(shader, 512, &size, ErrorLog);
-		errLog = "Error compiling shader number %i of type %d: '%s'\n", shader, ShaderType, ErrorLog;
+		char error[700] = { 0 };
+		sprintf_s(error, "Error compiling shader number %i of type %d: '%s'\n", shader, ShaderType, ErrorLog);
+		errLog = std::string(error);
 		return false;
 	}
 	return true;
@@ -125,7 +134,7 @@ bool Shader::checkValidationErrors(GLuint program, std::string& errLog) {
 	if (GL_TRUE != params)
 	{
 		glGetProgramInfoLog(program, sizeof(ErrorLog), NULL, ErrorLog);
-		errLog = "Validation Error: Invalid shader program: '%s'\n", ErrorLog;
+		errLog = ("Validation Error: Invalid shader program: '%s'\n", ErrorLog);
 		return false;
 	}
 	return true;
@@ -134,16 +143,28 @@ bool Shader::checkValidationErrors(GLuint program, std::string& errLog) {
 bool Shader::CheckStatus(GLuint obj, std::string& errLog)
 {
 	GLint status = GL_FALSE;
-	if (glIsShader(obj)) 
+	if (glIsShader(obj))
+	{
 		glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
-	if (glIsProgram(obj)) 
+	}
+	if (glIsProgram(obj))
+	{	
 		glGetProgramiv(obj, GL_LINK_STATUS, &status);
-	if (status == GL_TRUE) return true;
+	}
+	if (status == GL_TRUE)
+	{
+		return true;
+	}
 	GLchar log[1 << 15] = { 0 };
-	if (glIsShader(obj)) 
+	if (glIsShader(obj))
+	{
 		glGetShaderInfoLog(obj, sizeof(log), NULL, log);
-	if (glIsProgram(obj)) 
+	}
+	else if (glIsProgram(obj))
+	{
 		glGetProgramInfoLog(obj, sizeof(log), NULL, log);
+	}
 	errLog = log;
+	printf(log);
 	return false;
 }

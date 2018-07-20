@@ -12,6 +12,8 @@
 #include <common/Renderer.h>
 #include <GLFW/glfw3.h>
 
+#include <string>
+#include <iostream>
 /*----------------------------------------------------------------------------
 						GLOBAL VARIABLES AND CONSTANTS
 ----------------------------------------------------------------------------*/
@@ -115,6 +117,11 @@ struct GameState
 						MESH AND TEXTURE VARIABLES
 ----------------------------------------------------------------------------*/
 
+float points[] = {
+	0.0f,  0.5f,  0.0f,
+	0.5f, -0.5f,  0.0f,
+	-0.5f, -0.5f,  0.0f
+};
 
 /*----------------------------------------------------------------------------
 								SHADER VARIABLES
@@ -128,6 +135,8 @@ const char* atlas_image = "../freemono.png";
 const char* atlas_meta = "../freemono.meta";
 
 GameState* gameState;
+GLuint vbo;
+GLuint vao;
 /*----------------------------------------------------------------------------
 						FUNCTION DEFINITIONS
 ----------------------------------------------------------------------------*/
@@ -135,6 +144,7 @@ GameState* gameState;
 void endGame(int errCode)
 {
 	delete gameState;
+	std::cin.get();
 	exit(errCode);
 }
 
@@ -173,11 +183,11 @@ void UpdateAndRenderPlayer(const float& dt)
 
 	Renderer* renderer = Renderer::getInstance();
 	RenderVariables variables;
-	glm::vec2 scale = { sprite->textureDimensions.x / (float)width, sprite->textureDimensions.y / (float)height };
-	variables.model = glm::translate(variables.model, glm::vec3(sprite->getPosition(), 0.0));
-	variables.model = glm::scale(variables.model, glm::vec3(scale.x, scale.y, 0.0));
+	glm::vec2 scale = { sprite->textureDimensions.x / 900.0f, sprite->textureDimensions.y / 900.0f };
+	//variables.model = glm::translate(variables.model, glm::vec3(sprite->getPosition(), 0.0));
+	variables.model = glm::scale(variables.model, glm::vec3(0.00001, 0.00001, 1.0));
 
-	renderer->Render(Sprite::getVAO(), 6, variables, simpleShaderID, sprite->tex);
+	renderer->Render(vao, 3, variables, simpleShaderID);
 }
 void UpdateAndRenderEnemies(const float& dt)
 {
@@ -219,7 +229,7 @@ void UpdateAndRenderBullets(const float& dt)
 		variables.model = glm::scale(variables.model, glm::vec3(scale.x, scale.y, 0.0));
 
 		renderer->Render(Sprite::getVAO(), 6, variables, simpleShaderID, sprite->tex);
-		//printf("Rendering...");
+		printf("Rendering Bullet...");
 
 		++it;
 	}
@@ -234,13 +244,17 @@ void UpdateAndRenderShields(const float& dt)
 
 void init()
 {
+	std::string file_path = __FILE__;
+	std::string dir_path = file_path.substr(0, file_path.rfind("\\"));
+	std::cout << dir_path << std::endl;
+
 	Shader* factory = Shader::getInstance();		//Grab the static Shader instance from memory
 	std::string log;
-	if (!(simpleShaderID = factory->CompileShader(SIMPLE_VERT, SIMPLE_FRAG, log)))
+	if ((simpleShaderID = factory->CompileShader(SIMPLE_VERT, SIMPLE_FRAG, log)) < 0)
 	{
+		std::cout << "Log:" << log << "\n" << std::endl;
 		endGame(-5);
 	}
-	std::cout << "Log:" << log << "\n" << std::endl;
 	Shader::resetInstance();						//Delete the Shader Instance once you are finished with it.
 
 	//GameState Setup
@@ -263,13 +277,17 @@ void display()
 	glEnable(GL_BLEND);										// enable blending to allow for Alpha value usage.
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear the color and buffer bits to make a clean slate
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);					// Create a background
-
+	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);					// Create a background
 
 	gameState->gameTime += delta;
 
+	//glUseProgram(simpleShaderID);
+	//glBindVertexArray(vao);
+	//// draw points 0-3 from the currently bound VAO with current in-use shader
+	//glDrawArrays(GL_TRIANGLES, 0, 3);
+
 	UpdateAndRenderPlayer(delta);
-	UpdateAndRenderBullets(delta);
+	//UpdateAndRenderBullets(delta);
 	UpdateAndRenderShields(delta);
 	UpdateAndRenderEnemies(delta);
 }
@@ -326,6 +344,18 @@ void main(int argc, char** argv)
 	gameState = new GameState();
 	
 	init();
+
+	vbo = 0;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), points, GL_STATIC_DRAW);
+
+	vao = 0;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
 	while (!glfwWindowShouldClose(window))
 	{

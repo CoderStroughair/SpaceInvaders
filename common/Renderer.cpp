@@ -61,6 +61,5 @@ void Renderer::Render(const unsigned int& VAO, const unsigned int& numVertices, 
 		glBindTexture(GL_TEXTURE_2D, tex);
 		glUniform1i(glGetUniformLocation(shaderID, "texture_primary"), 0);
 	}
-	printf("Rendering...\n");
 	glDrawArrays(GL_TRIANGLES, 0, numVertices);
 }
