@@ -22,17 +22,17 @@ class Shader
 {
 private:
 	Shader() {};
-	bool AddShader(GLuint &ShaderProgram, const char* pShaderText, GLenum ShaderType, std::string& errLog);
-	char* readShaderSource(const char* shaderFile, bool& success, std::string& errLog);
-	bool checkCompileError(GLuint shader, GLenum ShaderType, std::string& errLog);
-	bool checkLinkError(GLuint shader, std::string& errLog);
-	bool checkValidationErrors(GLuint program, std::string& errLog);
-	static bool CheckStatus(GLuint obj, std::string& errLog);
+	bool AddShader(const char* inShaderLocation, GLenum inShaderType, GLuint inShaderProgram);
+	char* readShaderSource(const char* shaderFile, bool& success);
+	bool checkCompileError(GLuint shader, GLenum ShaderType);
+	bool checkLinkError(GLuint shader);
+	bool checkValidationErrors(GLuint program);
+	static bool CheckStatus(GLuint obj);
 	static Shader* Shader::instance;
 
 public:
-	GLuint CompileShader(char* vertex, char* fragment, std::string& errLog);
-	GLuint CompileComputeShader(char* compute, std::string& errLog);
+	bool CompileShader(GLuint& inOutShaderProgram, char* vertex, char* fragment);
+	GLuint CompileComputeShader(char* compute);
 	static Shader* getInstance()
 	{
 		if (Shader::instance == NULL)

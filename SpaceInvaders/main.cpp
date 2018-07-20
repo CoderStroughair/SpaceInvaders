@@ -33,10 +33,10 @@ struct Player
 	float cooldownTime;
 	Sprite sprite;
 	Player() : 
-		speed(0.01f),
-		cooldownTime(1.0f)
+		speed(0.0001f),
+		cooldownTime(2.0f)
 	{
-		sprite.loadSprite("../Textures/brickwall.jpg");
+		sprite.loadSprite("../Textures/alien.png");
 		//Now we need to place the player at the bottom of the screen
 		float scale = sprite.textureDimensions.y / (float)height;
 		sprite.setPosition({ 0.0f, -1.0f + scale});
@@ -49,10 +49,10 @@ struct Bullet
 	bool enabled;
 	Sprite sprite;
 	Bullet() :
-		speed(1.5f),
+		speed(0.05f),
 		enabled(false)
 	{
-		sprite.loadSprite("../Textures/brickwall.jpg");
+		sprite.loadSprite("../Textures/bullet.png");
 	}
 };
 
@@ -115,11 +115,17 @@ struct GameState
 						MESH AND TEXTURE VARIABLES
 ----------------------------------------------------------------------------*/
 
+float points[] = {
+	0.0f,  0.5f,  0.0f,
+	0.5f, -0.5f,  0.0f,
+	-0.5f, -0.5f,  0.0f
+	};
 
 /*----------------------------------------------------------------------------
 								SHADER VARIABLES
 ----------------------------------------------------------------------------*/
 GLuint simpleShaderID;
+GLuint shader_programme;
 /*----------------------------------------------------------------------------
 							OTHER VARIABLES
 ----------------------------------------------------------------------------*/
@@ -128,12 +134,19 @@ const char* atlas_image = "../freemono.png";
 const char* atlas_meta = "../freemono.meta";
 
 GameState* gameState;
+GLuint vbo;
+GLuint vao;
 /*----------------------------------------------------------------------------
 						FUNCTION DEFINITIONS
 ----------------------------------------------------------------------------*/
 
 void endGame(int errCode)
 {
+	printf("Error Code %d", errCode);
+	if (errCode != 0)
+	{
+		std::cin.get();
+	}
 	delete gameState;
 	exit(errCode);
 }
@@ -214,15 +227,16 @@ void UpdateAndRenderBullets(const float& dt)
 
 		//bullet->pos = glm::vec2(0.0, 0.001);
 
-		glm::vec2 scale = { sprite->textureDimensions.x / (float)width, sprite->textureDimensions.y / (float)height };
+		glm::vec2 scale = { sprite->textureDimensions.x / ((float)width), sprite->textureDimensions.y / ((float)height) };
 		variables.model = glm::translate(variables.model, glm::vec3(sprite->getPosition(), 0.0));
 		variables.model = glm::scale(variables.model, glm::vec3(scale.x, scale.y, 0.0));
 
 		renderer->Render(Sprite::getVAO(), 6, variables, simpleShaderID, sprite->tex);
-		//printf("Rendering...");
+		printf("Rendering Bullet...");
 
 		++it;
 	}
+	printf("Ended");
 
 }
 void UpdateAndRenderShields(const float& dt)
@@ -235,12 +249,11 @@ void UpdateAndRenderShields(const float& dt)
 void init()
 {
 	Shader* factory = Shader::getInstance();		//Grab the static Shader instance from memory
-	std::string log;
-	if (!(simpleShaderID = factory->CompileShader(SIMPLE_VERT, SIMPLE_FRAG, log)))
+	;
+	if (!factory->CompileShader(simpleShaderID, SIMPLE_VERT, SIMPLE_FRAG))
 	{
-		endGame(-5);
+		endGame(5);
 	}
-	std::cout << "Log:" << log << "\n" << std::endl;
 	Shader::resetInstance();						//Delete the Shader Instance once you are finished with it.
 
 	//GameState Setup
@@ -265,6 +278,10 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear the color and buffer bits to make a clean slate
 	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);					// Create a background
 
+	glUseProgram(simpleShaderID);
+	//glBindVertexArray(vao);
+	//draw points 0-3 from the currently bound VAO with current in-use shader
+	//glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	gameState->gameTime += delta;
 
@@ -326,6 +343,18 @@ void main(int argc, char** argv)
 	gameState = new GameState();
 	
 	init();
+
+	vbo = 0;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), points, GL_STATIC_DRAW);
+	
+	vao = 0;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
 	while (!glfwWindowShouldClose(window))
 	{
