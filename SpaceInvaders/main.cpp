@@ -10,16 +10,19 @@
 #include "glm/ext.hpp"
 #include <common/Sprite.h>
 #include <common/Renderer.h>
+#include <common/Framebuffer.h>
 #include <GLFW/glfw3.h>
 
 /*----------------------------------------------------------------------------
 						GLOBAL VARIABLES AND CONSTANTS
 ----------------------------------------------------------------------------*/
 
-const int width = 900, height = 900;
-const int gMaxBullets = 10;
+const int width = 1200, height = 1200;
+const int gMaxBullets = 5;
 const int gMaxEnemiesPerLine = 10;
 const int gMaxLines = 6;
+
+DWORD lastFrame;
 
 /*----------------------------------------------------------------------------
 								STRUCTS
@@ -33,8 +36,8 @@ struct Player
 	float cooldownTime;
 	Sprite sprite;
 	Player() : 
-		speed(0.0001f),
-		cooldownTime(2.0f)
+		speed(0.0005f),
+		cooldownTime(0.5f)
 	{
 		sprite.loadSprite("../Textures/alien.png");
 		//Now we need to place the player at the bottom of the screen
@@ -49,7 +52,7 @@ struct Bullet
 	bool enabled;
 	Sprite sprite;
 	Bullet() :
-		speed(0.05f),
+		speed(1.0f),
 		enabled(false)
 	{
 		sprite.loadSprite("../Textures/bullet.png");
@@ -71,9 +74,9 @@ struct GameState
 {
 	Player player;
 	std::vector<Bullet*> bullets;
-	unsigned int bIndex;
+	std::vector<Bullet*>::iterator bulletPointer;
 	std::vector<Enemy*> enemies;
-	unsigned int eIndex;
+	std::vector<Enemy*>::iterator enemyPointer;
 
 	float gameTime;
 
@@ -81,20 +84,20 @@ struct GameState
 
 	GameState() :
 		enemySpeed(0.01f),
-		gameTime(0.0f),
-		eIndex(0),
-		bIndex(0)
+		gameTime(0.0f)
 	{
 		for (int i = 0; i < gMaxEnemiesPerLine * gMaxLines; i++)
 		{
 			Enemy* enemy = new Enemy();
 			enemies.push_back(enemy);
 		}
+		enemyPointer = enemies.begin();
 		for (int i = 0; i < gMaxBullets; i++)
 		{
 			Bullet* bullet = new Bullet();
 			bullets.push_back(bullet);
 		}
+		bulletPointer = bullets.begin();
 	}
 
 	~GameState()
@@ -151,7 +154,7 @@ void endGame(int errCode)
 	exit(errCode);
 }
 
-void UpdateAndRenderPlayer(const float& dt)
+void UpdatePlayerPhysics(const float& dt)
 {
 	//Setting Player Movement
 	Sprite* sprite = &gameState->player.sprite;
@@ -164,87 +167,110 @@ void UpdateAndRenderPlayer(const float& dt)
 	sprite->setPosition({ pos, sprite->getPosition().y});
 
 	static float cooldownTimer = 0;
-	cooldownTimer -= dt;
-	if (cooldownTimer < 0)
-		cooldownTimer = 0;
+	cooldownTimer += dt;
 	//Creating bullets that the player is firing
-	if (gameState->player.shooting && cooldownTimer == 0)
+	if ((gameState->player.shooting) && (cooldownTimer > gameState->player.cooldownTime) && (gameState->bulletPointer != gameState->bullets.end()) )
 	{
-		cooldownTimer = gameState->player.cooldownTime;
+		cooldownTimer = 0;
 		gameState->player.shooting = false;
 
-		Bullet* bullet = gameState->bullets[gameState->bIndex];
+		Bullet* bullet = *gameState->bulletPointer;
 		bullet->enabled = true;
-		bullet->sprite.setPosition(gameState->player.sprite.getPosition() + glm::vec2(0.0f, 0.01f));
-
-		if (gameState->bIndex + 1 >= (int)gameState->bullets.size())
-			gameState->bIndex = 0;
-		else
-			gameState->bIndex++;
-		
+		bullet->sprite.setPosition(glm::vec2(gameState->player.sprite.getPosition().x, gameState->player.sprite.getPosition().y +(sprite->textureDimensions.y / (float)height) / 2));
+		gameState->bulletPointer++;		
 	}
-
-	Renderer* renderer = Renderer::getInstance();
-	RenderVariables variables;
-	glm::vec2 scale = { sprite->textureDimensions.x / (float)width, sprite->textureDimensions.y / (float)height };
-	variables.model = glm::translate(variables.model, glm::vec3(sprite->getPosition(), 0.0));
-	variables.model = glm::scale(variables.model, glm::vec3(scale.x, scale.y, 0.0));
-
-	renderer->Render(Sprite::getVAO(), 6, variables, simpleShaderID, sprite->tex);
 }
-void UpdateAndRenderEnemies(const float& dt)
+void UpdateEnemyPhysics(const float& dt)
 {
 	//Rendering Loop for Enemies
-	for (unsigned int i = 0; i < gameState->enemies.size(); i++)
+	for (std::vector<Enemy*>::iterator it = gameState->enemies.begin(); it < gameState->enemyPointer; )
 	{
 
 	}
 }
-void UpdateAndRenderBullets(const float& dt)
+void UpdateBulletPhysics(const float& dt)
 {
 	//Rendering Loop for Bullets
-	for (std::vector<Bullet*>::iterator it = gameState->bullets.begin(); it != gameState->bullets.end(); )
+	for (std::vector<Bullet*>::iterator it = gameState->bullets.begin(); it < gameState->bulletPointer; )
 	{
 		Bullet* bullet = *it;
-		if (!bullet->enabled)
-		{
-			++it;
-			continue;
-		}
 		bullet->sprite.setPosition(bullet->sprite.getPosition() + glm::vec2(0.0, bullet->speed*dt));
 		if (bullet->sprite.getPosition().y > 1.0f)
 		{
 			bullet->enabled = false;
-			printf("Bullet deactivated\n");
+			std::iter_swap(it, gameState->bulletPointer - 1);
+			gameState->bulletPointer--;
 		}
 		//TODO - Implement Collision Detection between the bullets and the enemies.
-
-		//TODO - Render any bullets currently on-screen.
-
-		Renderer* renderer = Renderer::getInstance();
-		RenderVariables variables;
-		Sprite* sprite = &bullet->sprite;
-
-		//bullet->pos = glm::vec2(0.0, 0.001);
-
-		glm::vec2 scale = { sprite->textureDimensions.x / ((float)width), sprite->textureDimensions.y / ((float)height) };
-		variables.model = glm::translate(variables.model, glm::vec3(sprite->getPosition(), 0.0));
-		variables.model = glm::scale(variables.model, glm::vec3(scale.x, scale.y, 0.0));
-
-		renderer->Render(Sprite::getVAO(), 6, variables, simpleShaderID, sprite->tex);
-		printf("Rendering Bullet...");
-
 		++it;
 	}
-	printf("Ended");
-
 }
-void UpdateAndRenderShields(const float& dt)
+void UpdateShieldPhysics(const float& dt)
 {
 
 }
 
+void RenderScene()
+{
+	Renderer* renderer = Renderer::getInstance();
+	RenderVariables renderVariables;
+	Sprite* sprite;
+	//Render the Player
+	{
+		sprite = &gameState->player.sprite;
+		glm::vec2 scale = { sprite->textureDimensions.x / (float)width, sprite->textureDimensions.y / (float)height };
+		renderVariables.model = glm::translate(renderVariables.model, glm::vec3(sprite->getPosition(), 0.0));
+		renderVariables.model = glm::scale(renderVariables.model, glm::vec3(scale.x, scale.y, 0.0));
+		renderer->Render(Sprite::getVAO(), 6, renderVariables, simpleShaderID, sprite->tex);
+	}
+
+	//Render the Bullets
+	{
+		for (std::vector<Bullet*>::iterator it = gameState->bullets.begin(); it != gameState->bullets.end(); )
+		{
+			renderVariables = {};
+			Bullet* bullet = *it;
+			if (!bullet->enabled)
+			{
+				++it;
+				continue;
+			}
+			sprite = &bullet->sprite;
+			glm::vec2 scale = { sprite->textureDimensions.x / ((float)width), sprite->textureDimensions.y / ((float)height) };
+			renderVariables.model = glm::translate(renderVariables.model, glm::vec3(sprite->getPosition(), 0.0));
+			renderVariables.model = glm::scale(renderVariables.model, glm::vec3(scale.x, scale.y, 0.0));
+			renderer->Render(Sprite::getVAO(), 6, renderVariables, simpleShaderID, sprite->tex);
+			++it;
+		}
+	}
+
+	//Render the Enemies
+	{
+
+	}
+
+	//Render the Shields
+	{
+
+	}
+}
+
 /*--------------------------------------------------------------------------*/
+
+long long milliseconds_now() {
+	//TODO - Setup system for cross-platform compatibility
+
+	static LARGE_INTEGER s_frequency;
+	static BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
+	if (s_use_qpc) {
+		LARGE_INTEGER now;
+		QueryPerformanceCounter(&now);
+		return (1000LL * now.QuadPart) / s_frequency.QuadPart;
+	}
+	else {
+		return GetTickCount();
+	}
+}
 
 void init()
 {
@@ -262,14 +288,14 @@ void init()
 
 void display()
 {
-	//Setup of the time difference between frames
-	static clock_t lastFrame = clock();
-	clock_t currFrame = clock();
-	float delta = (currFrame - lastFrame) / (float)CLOCKS_PER_SEC;
-	if (delta >= 0.0166f)
+	DWORD currFrame = milliseconds_now();
+	float delta = (currFrame - lastFrame)/1000.0f;
+	if (delta == 0)
 	{
-		delta = 0.0166f;	//Locks physics interactions to 60fps, should that be necessary
+		//return;
 	}
+
+	lastFrame = currFrame;
 
 	glEnable(GL_DEPTH_TEST);								// enable depth-testing
 	glDepthFunc(GL_LESS);									// depth-testing interprets a smaller value as "closer"
@@ -285,10 +311,12 @@ void display()
 
 	gameState->gameTime += delta;
 
-	UpdateAndRenderPlayer(delta);
-	UpdateAndRenderBullets(delta);
-	UpdateAndRenderShields(delta);
-	UpdateAndRenderEnemies(delta);
+	UpdatePlayerPhysics(delta);
+	UpdateBulletPhysics(delta);
+	UpdateShieldPhysics(delta);
+	UpdateEnemyPhysics(delta);
+
+	RenderScene();
 }
 
 #pragma region INPUT FUNCTIONS
@@ -356,10 +384,15 @@ void main(int argc, char** argv)
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
 
+	std::string log;
+	Framebuffer frameBuffer;
+	frameBuffer.init(width, height, log);
+	lastFrame = milliseconds_now();
 	while (!glfwWindowShouldClose(window))
 	{
 		pollInput(window);
 		display();
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
