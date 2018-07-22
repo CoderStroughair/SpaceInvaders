@@ -19,7 +19,7 @@
 
 const int width = 1200, height = 1200;
 const int gMaxBullets = 5;
-const int gMaxEnemiesPerLine = 10;
+const int gMaxEnemiesPerLine = 6;
 const int gMaxLines = 6;
 
 DWORD lastFrame;
@@ -49,11 +49,9 @@ struct Player
 struct Bullet
 {
 	float speed;
-	bool enabled;
 	Sprite sprite;
 	Bullet() :
-		speed(1.0f),
-		enabled(false)
+		speed(1.0f)
 	{
 		sprite.loadSprite("../Textures/bullet.png");
 	}
@@ -61,12 +59,15 @@ struct Bullet
 
 struct Enemy 
 {
-	glm::vec2 pos;
 	Sprite sprite;
+	float speed;
+	bool enabled;
 	Enemy() :
-		pos({ 0.0f, 0.0f }) 
+		speed(1.0f),
+		enabled(false)
 	{
 		sprite.loadSprite("../Textures/alien.png");
+		sprite.setPosition(glm::vec2(0.0, 0.0));
 	}
 };
 
@@ -89,6 +90,7 @@ struct GameState
 		for (int i = 0; i < gMaxEnemiesPerLine * gMaxLines; i++)
 		{
 			Enemy* enemy = new Enemy();
+			enemy->enabled = true;
 			enemies.push_back(enemy);
 		}
 		enemyPointer = enemies.begin();
@@ -154,6 +156,33 @@ void endGame(int errCode)
 	exit(errCode);
 }
 
+void SetupEnemies()
+{
+	float scale = gameState->enemies[0]->sprite.textureDimensions.y / (float)height;
+	glm::vec2 initPosition = glm::vec2({scale - 1, 1 - scale });
+	glm::vec2 currPosition = initPosition;
+	int numEnemiesOnLine = 0;
+	int currLine = 0;
+	for (std::vector<Enemy*>::iterator it = gameState->enemies.begin(); it != gameState->enemies.end(); )
+	{
+		Enemy* enemy = *it;
+		enemy->sprite.setPosition({ currPosition.x, currPosition.y });
+		numEnemiesOnLine++;
+		if (numEnemiesOnLine == gMaxEnemiesPerLine)
+		{
+			numEnemiesOnLine = 0;
+			currLine++;
+			currPosition = initPosition + glm::vec2(0.0, -scale * 2 * currLine);
+		}
+		else
+		{
+			currPosition = currPosition + glm::vec2(scale * 2, 0.0f);
+		}
+		gameState->enemyPointer++;
+		it++;
+	}
+}
+
 void UpdatePlayerPhysics(const float& dt)
 {
 	//Setting Player Movement
@@ -175,7 +204,6 @@ void UpdatePlayerPhysics(const float& dt)
 		gameState->player.shooting = false;
 
 		Bullet* bullet = *gameState->bulletPointer;
-		bullet->enabled = true;
 		bullet->sprite.setPosition(glm::vec2(gameState->player.sprite.getPosition().x, gameState->player.sprite.getPosition().y +(sprite->textureDimensions.y / (float)height) / 2));
 		gameState->bulletPointer++;		
 	}
@@ -185,7 +213,7 @@ void UpdateEnemyPhysics(const float& dt)
 	//Rendering Loop for Enemies
 	for (std::vector<Enemy*>::iterator it = gameState->enemies.begin(); it < gameState->enemyPointer; )
 	{
-
+		++it;
 	}
 }
 void UpdateBulletPhysics(const float& dt)
@@ -197,7 +225,6 @@ void UpdateBulletPhysics(const float& dt)
 		bullet->sprite.setPosition(bullet->sprite.getPosition() + glm::vec2(0.0, bullet->speed*dt));
 		if (bullet->sprite.getPosition().y > 1.0f)
 		{
-			bullet->enabled = false;
 			std::iter_swap(it, gameState->bulletPointer - 1);
 			gameState->bulletPointer--;
 		}
@@ -226,15 +253,10 @@ void RenderScene()
 
 	//Render the Bullets
 	{
-		for (std::vector<Bullet*>::iterator it = gameState->bullets.begin(); it != gameState->bullets.end(); )
+		for (std::vector<Bullet*>::iterator it = gameState->bullets.begin(); it != gameState->bulletPointer; )
 		{
 			renderVariables = {};
 			Bullet* bullet = *it;
-			if (!bullet->enabled)
-			{
-				++it;
-				continue;
-			}
 			sprite = &bullet->sprite;
 			glm::vec2 scale = { sprite->textureDimensions.x / ((float)width), sprite->textureDimensions.y / ((float)height) };
 			renderVariables.model = glm::translate(renderVariables.model, glm::vec3(sprite->getPosition(), 0.0));
@@ -246,7 +268,18 @@ void RenderScene()
 
 	//Render the Enemies
 	{
-
+		for (std::vector<Enemy*>::iterator it = gameState->enemies.begin(); it != gameState->enemyPointer; )
+		{
+			renderVariables = {};
+			Enemy* bullet = *it;
+			sprite = &bullet->sprite;
+			glm::vec2 scale = { sprite->textureDimensions.x / ((float)width), sprite->textureDimensions.y / ((float)height) };
+			renderVariables.model = glm::translate(renderVariables.model, glm::vec3(sprite->getPosition(), 0.0));
+			renderVariables.model = glm::scale(renderVariables.model, glm::vec3(scale.x, scale.y, 0.0));
+			renderer->Render(Sprite::getVAO(), 6, renderVariables, simpleShaderID, sprite->tex);
+			++it;
+		}
+		printf("\n");
 	}
 
 	//Render the Shields
@@ -294,7 +327,6 @@ void display()
 	{
 		//return;
 	}
-
 	lastFrame = currFrame;
 
 	glEnable(GL_DEPTH_TEST);								// enable depth-testing
@@ -388,6 +420,7 @@ void main(int argc, char** argv)
 	Framebuffer frameBuffer;
 	frameBuffer.init(width, height, log);
 	lastFrame = milliseconds_now();
+	SetupEnemies();
 	while (!glfwWindowShouldClose(window))
 	{
 		pollInput(window);

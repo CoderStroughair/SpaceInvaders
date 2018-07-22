@@ -48,7 +48,12 @@ private:
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (GLvoid *)offset);	//adding markers to find texture data
 	}
 public:
-
+	Sprite()
+	{
+		pos = glm::vec3(0);
+		rotation = 0;
+		scale = 1;
+	}
 	bool loadSprite(char* texLocation);
 	void setPosition(const glm::vec2& _pos);
 	glm::vec2 getPosition();
